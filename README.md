@@ -1,52 +1,46 @@
-# Autonomous 4WD Vehicle Platform: System Identification & Discrete PI Control
+# Autonomous 4WD Vehicle Platform: System Identification & Cascaded PI Control
 
-An experimental autonomous 4WD ground vehicle platform designed in collaboration with **John Deere** for strict path-tracking trajectories within a 10x10m operative perimeter. The project transitions away from traditional trial-and-error embedded tuning by deploying formal mathematical **Dynamic Plant Identification (ARX Modeling)** in MATLAB, paired with localized, multi-loop discrete PI controllers implemented on an **STM32F103C8T6 micro-controller**.
+![Collaborator](https://img.shields.io/badge/Industry%20Collaborator-John%20Deere-006227?style=flat-square&logo=John-Deere&logoColor=FFDE00)
+![Platform](https://img.shields.io/badge/Platform-STM32--HAL-blue?style=flat-square&logo=stmicroelectronics)
+![Control](https://img.shields.io/badge/Control-Cascaded%20PI%20Loop-red?style=flat-square)
+![Math](https://img.shields.io/badge/Analysis-MATLAB%20System%20ID-orange?style=flat-square&logo=mathworks)
+
+An experimental autonomous 4WD ground vehicle platform developed as a technical challenge in collaboration with **John Deere**. The project achieves precise path-tracking trajectories within a closed perimeter by moving away from trial-and-error embedded tuning. Instead, it deploys formal mathematical **Dynamic Plant Identification (ARX Modeling)** in MATLAB, paired with localized, multi-loop discrete PI controllers implemented on an **STM32F103C8T6 micro-controller**.
 
 ## 📊 Project Metadata
-* **Academic Timeline:** Undergraduate Project (November 2023)
-* **Corporate Collaborator:** John Deere (Hardware & Architecture Guidelines)
-* **Engineering Focus:** Dynamic System Identification, State-Space Estimation, Multivariable Control Systems, Low-Level Firmware Construction.
+* **Timeline:** Undergraduate Project - Industrial Automation Class (November 2023)
+* **Engineering Discipline:** Mechatronics Engineering
+* **Core Focus:** Dynamic System Identification, State-Space Estimation, Multivariable Control Systems, Low-Level Firmware Construction.
 
 ---
 
-## 🛠️ Mechatronic System Architecture
+## 📁 Repository Structure
 
-The robot employs a robust, highly modular hardware topology optimized for deterministic signal management and precise execution response:
+The codebase and engineering documentation are structured as follows:
 
-* **Processing Unit & Peripherals:** Managed entirely via an STM32 Bluepill MCU. Features dynamic clock configuration feeding 4 independent high-resolution 12-bit Timer-based PWM signals—yielding control increments as fine as 0.8mV per motor drive line—and 4 dedicated hardware external interrupts (EXTI) for speed tracking.
-* **Actuation & Kinematics:** Driven by a 48:1 gearmotor layout controlled through L298N H-Bridges executing *skid-steer* zero-radius turning configurations.
-* **Sensor Fusion & Signal Paths:** * **MPU6050 6-DOF IMU:** Communicates over an I2C bus at 100 kHz. The Z-axis gyroscope data is filtered via a high-pass digital architecture and integrated every 50ms inside a hardware timer callback to extract the relative yaw angle.
-  * **H206 Optical Encoders:** Configured over pulldown hardware lines to measure real-time wheel Revolutions Per Minute (RPM).
-  * **QMC5883L Magnetometer:** Calibrated through a normalized 3D point-cloud sphere in MATLAB to mitigate local hard/soft iron distortions (documented and analyzed under environmental interference constraints).
-
----
-
-## 📐 Control Theory Framework & System Identification
-
-Rather than assuming ideal linear motor parameters, the system's differential dynamics were rigorously audited through three distinct analytical testing paradigms in MATLAB to suppress inter-axial wheel drift:
-
-1. **Wide-Pulse Modeling:** Evaluated transient variations across midpoint boundaries.
-2. **PRBS (Pseudo-Random Binary Sequence):** Deployed a multi-frequency stochastic binary input pattern to stress-test high-frequency variations across the plants.
-3. **Deterministic Step Response Analysis (Selected):** Modeled utilizing a mathematical Autoregressive with Exogenous Input (**ARX**) matrix structure ($Q = X'X$). This framework achieved a dynamic model resemblance exceeding 70%, capturing authentic motor back-EMF and mechanical friction profiles.
-
-The resulting gains were mapped into a **Dual-Layer Cascaded Control Structure**:
-* **Inner Loop:** 4 individual Proportional-Integral (PI) discrete controllers executing inside a deterministic TIM2 period to force equal rotational speeds across all wheels, neutralizing unexpected physical slipping.
-* **Outer Loop:** A master directional PI controller that continuously evaluates the integrated gyroscope telemetry to control the precise trajectory angles.
-
----
-
-## 🔍 Post-Years Engineering Evaluation & Retrospective
-
-Reviewing this architecture from a post-graduate standpoint highlights critical mechatronic challenges that serve as premier case studies for production improvements:
-
-### 1. High-Frequency Noise Isolation: STM32 vs. Slower Architectures
-* **The Vulnerability:** Initial testing with cheap FC-03/LM393 encoder modules introduced immense signal noise, creating phantom high-RPM spikes that destabilized the derivative loops. 
-* **The Insight:** Slower platforms (e.g., Arduino Uno) mask these flaws because their low clock cycles act as an implicit low-pass hardware filter. The high-performance clock of the STM32 registered every micro-spike. The resolution required replacing the comparators with rugged H206 hardware sensors and implementing a digital moving average filter in code.
-
-### 2. Structural Dynamics & Structural Insulation Trade-offs
-* **The Vulnerability:** To prevent mechanical tire slip on heavy torque demands, the chassis was upgraded from acrylic to a custom 1/8-inch steel plate cut via a CNC plasma cutter. However, mechanical vibration caused the underlying H-bridge pins to pierce the protective insulation tape, short-circuiting the microcontroller.
-* **The Insight:** Prototyping structural updates requires strict adherence to electronic isolation housing. While the system was reverted to acrylic plates due to project time constraints, a modern iteration would implement a hybrid sand-blasted aluminum skeleton with isolated 3D-printed PETG brackets to isolate signal paths while maintaining structural mass.
-
-### 3. Sensor Selection and Telemetry Drift
-* **The Vulnerability:** Fusing magnetometer data with the gyroscope was intended to resolve yaw drift, but local magnetic fields (steel building columns) severely distorted the 3D point cloud calibration.
-* **The Insight:** Over short execution windows, the gyroscope's standalone relative integration proved highly precise. For automotive or agricultural scaling, the magnetometer would be isolated on an elevated structural mast or replaced by a real-time kinematics (RTK) differential GNSS module.
+```text
+├── Core/                      # Native STM32 firmware framework
+│   ├── Inc/                   # Architecture headers (.h) [PIDpwm.h, Directions.h]
+│   └── Src/                   # Low-level application files (.c)
+│       ├── main.c             # System initializations, state-machine execution, and ISRs
+│       ├── PIDpwm.c           # Mathematical implementation of the discrete PI control algorithm
+│       └── Directions.c       # Low-level H-Bridge GPIO motor activation mappings
+├── Identification_MATLAB/     # Plant modeling arrays and mathematical analysis
+│   ├── ARX_Escalon.pdf        # System identification via step-response matrices
+│   ├── ARX_PRBS.pdf           # Stochastic validation tracking using Pseudo-Random Binary Sequences
+│   └── ARX_E1.pdf             # Model cross-validation and transfer function extractions
+├── Documents/                 # Formal technical documentation
+│   └── Reporte_Automatizacion_Industrial.pdf # Comprehensive engineering report
+└── Carritov3.ioc              # Graphical peripheral clock and pinout setup configuration
+```
+🛠️ Mechatronic System ArchitectureThe vehicle employs a robust mechatronic hardware topology optimized for deterministic signal management and precise mechanical execution response:Processing Unit & Peripherals: Managed via an STM32 Bluepill MCU running an ARM Cortex-M3 core. Features advanced clock routines feeding 4 independent high-resolution 12-bit Timer-based PWM signals—yielding software control increments as fine as 0.8mV per motor drive line—coupled with 4 dedicated hardware external interrupts (EXTI) for precise wheel speed acquisition.Actuation & Kinematics: Driven by a 48:1 gearmotor layout controlled through dual L298N H-Bridges executing skid-steer zero-radius turning configurations.Sensor Integration & Signals: * MPU6050 6-DOF IMU: Communicates over an I2C bus at 100 kHz. The Z-axis gyroscope data is filtered via a high-pass digital architecture and integrated every 50ms inside a hardware timer callback to extract the relative yaw angle.H206 Optical Encoders: Configured over hardware pulldown lines to measure real-time wheel Revolutions Per Minute (RPM).QMC5883L Magnetometer: Calibrated through a normalized 3D point-cloud sphere in MATLAB to mitigate local magnetic distortions.🔄 Trajectory State Machine FlowThe navigation firmware operates as a deterministic finite state machine inside the application loop (main.c), executing orientation updates and linear distance monitoring:Fragmento de códigograph TD
+    State0[State 0: Idle / Wait for Bluetooth 'S' Command] -->|'S' Received via HC-05| State1[State 1: Drive Forward Path]
+    State1 -->|Distance Average > 950 counts| State2[State 2: Execute Right Turn -90°]
+    State2 -->|Gyro Yaw Angle Reaches Threshold| State1
+    State1 -.->|Emergency Stop 'E' Command| State0
+    State2 -.->|Emergency Stop 'E' Command| State0
+    
+    style State0 fill:#fdf5e6,stroke:#333,stroke-width:2px
+    style State1 fill:#e6f2ff,stroke:#333,stroke-width:2px
+    style State2 fill:#ffe6e6,stroke:#333,stroke-width:2px
+📐 Control Theory Framework & System IdentificationRather than assuming ideal linear motor parameters, the system's differential dynamics were rigorously audited through mathematical Autoregressive with Exogenous Input (ARX) matrix structures ($Q = X'X$) inside MATLAB to suppress inter-axial wheel drift:Stochastic Testing (PRBS): Deployed a multi-frequency pseudo-random binary sequence to stress-test high-frequency variations across the plants.Step Response Analysis: Selected for the final implementation due to a dynamic model resemblance exceeding 70%, successfully capturing authentic motor back-EMF and mechanical friction profiles.The resulting gains were mapped into a Dual-Layer Cascaded Control Structure:Inner Loop: 4 individual Proportional-Integral (PI) discrete controllers executing inside a deterministic 250ms TIM2 period to force equal rotational speeds across all wheels, neutralizing unexpected physical slipping.Outer Loop: A master directional controller executing on a TIM4 50ms interval that continuously evaluates the integrated high-pass filtered gyroscope telemetry to modulate precise trajectory adjustments.⚙️ Development Environment & ToolchainIDE: STM32CubeIDE v1.13 Utilizing the GCC ARM Embedded Toolchain.Hardware Configuration Tool: STM32CubeMX Embedded Core.Low-Level Software Layer: STM32F1xx HAL Peripherals Cores.Analysis Subsystems: MATLAB R2023a (Control System Toolbox & System Identification Toolbox).🔍 Engineering Retrospective & Future Work (Post-Years Evaluation)Looking back at this platform from a post-graduate perspective, the architecture stands as a solid foundation for multivariable systems, but it reveals clear constraints when compared against production-grade automotive standards. To preserve the historical integrity of this undergraduate milestone, the codebase remains completely unaltered, but the following architectural areas of opportunity have been identified for future industrial iterations:1. High-Frequency Noise Isolation: STM32 vs. Slower ArchitecturesThe Vulnerability: Initial testing with cheap LM393 comparator encoder modules introduced immense signal noise, creating phantom high-RPM spikes that destabilized the control loops.The Insight: Slower processing platforms (e.g., Arduino Uno) inherently mask these flaws because their low clock cycles act as an implicit low-pass filter. The high-performance 72MHz clock of the STM32 registered every micro-spike. The resolution required replacing the comparators with rugged H206 hardware sensors and implementing a digital moving average filter in code.2. Structural Dynamics & Electrical Insulation Trade-offsThe Vulnerability: To prevent mechanical tire slip under heavy torque demands, the chassis was upgraded from acrylic to a custom 1/8-inch steel plate cut via a CNC plasma cutter. However, mechanical vibration caused the underlying H-bridge pins to pierce the protective insulation tape, short-circuiting the microcontroller.The Insight: Prototyping structural updates requires strict adherence to electronic isolation housing. While the system was reverted to acrylic plates due to project time constraints, a modern automotive iteration would implement a hybrid sand-blasted aluminum skeleton with isolated 3D-printed PETG brackets to isolate signal paths while maintaining optimal structural mass.3. Sensor Selection and Environmental Telemetry DriftThe Vulnerability: Fusing magnetometer data with the gyroscope was intended to resolve yaw drift, but local magnetic fields (such as steel building columns) severely distorted the 3D point-cloud calibration.The Insight: Over short execution windows, the gyroscope's standalone relative integration proved highly precise, leading to the deliberate deactivation of the magnetometer to optimize computational overhead. For automotive or agricultural scaling, the magnetometer would be isolated on an elevated structural mast or replaced by a real-time kinematics (RTK) differential GNSS module.
